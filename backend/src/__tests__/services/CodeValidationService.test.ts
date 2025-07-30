@@ -14,12 +14,12 @@ describe('CodeValidationService', () => {
         {
           filename: 'index.html',
           content: '<!DOCTYPE html><html><head></head><body></body></html>',
-          type: 'html'
+          type: 'HTML'
         },
         {
           filename: 'styles.css',
           content: 'body { margin: 0; }',
-          type: 'css'
+          type: 'CSS'
         }
       ];
 
@@ -34,12 +34,12 @@ describe('CodeValidationService', () => {
         {
           filename: 'index.html',
           content: '<html><head><body></body>', // Missing closing tags
-          type: 'html'
+          type: 'HTML'
         },
         {
           filename: 'styles.css',
           content: 'body { margin: 0; color: red', // Missing closing brace
-          type: 'css'
+          type: 'CSS'
         }
       ];
 
@@ -54,7 +54,7 @@ describe('CodeValidationService', () => {
         {
           filename: 'index.html',
           content: '<html><head><link rel="stylesheet" href="missing.css"></head><body></body></html>',
-          type: 'html'
+          type: 'HTML'
         }
       ];
 
@@ -70,7 +70,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'index.html',
           content: '<!DOCTYPE html><html><head></head><body><h1>Hello</h1></body></html>',
-          type: 'html'
+          type: 'HTML'
         };
 
         const result = await validationService.validateFile(file);
@@ -83,7 +83,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'index.html',
           content: '<div>Content</div>',
-          type: 'html'
+          type: 'HTML'
         };
 
         const result = await validationService.validateFile(file);
@@ -97,7 +97,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'index.html',
           content: '<html><body><img src="test.jpg"></body></html>',
-          type: 'html'
+          type: 'HTML'
         };
 
         const result = await validationService.validateFile(file);
@@ -111,7 +111,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'styles.css',
           content: 'body { margin: 0; padding: 10px; }',
-          type: 'css'
+          type: 'CSS'
         };
 
         const result = await validationService.validateFile(file);
@@ -124,7 +124,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'styles.css',
           content: 'body { margin: 0; padding: 10px;',
-          type: 'css'
+          type: 'CSS'
         };
 
         const result = await validationService.validateFile(file);
@@ -137,7 +137,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'styles.css',
           content: 'body { margin: 0;; padding: 10px; }',
-          type: 'css'
+          type: 'CSS'
         };
 
         const result = await validationService.validateFile(file);
@@ -151,7 +151,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'script.js',
           content: 'function hello() { return "Hello World"; }',
-          type: 'js'
+          type: 'JS'
         };
 
         const result = await validationService.validateFile(file);
@@ -164,7 +164,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'script.js',
           content: 'function hello() { return "Hello World" }', // Missing semicolon is OK, but let's test real syntax error
-          type: 'js'
+          type: 'JS'
         };
 
         // This should pass since missing semicolon is not a syntax error
@@ -176,7 +176,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'script.js',
           content: 'function hello() { return "Hello World }', // Missing quote
-          type: 'js'
+          type: 'JS'
         };
 
         const result = await validationService.validateFile(file);
@@ -189,7 +189,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'script.js',
           content: 'var x = 5;',
-          type: 'js'
+          type: 'JS'
         };
 
         const result = await validationService.validateFile(file);
@@ -201,7 +201,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'script.js',
           content: 'console.log("debug");',
-          type: 'js'
+          type: 'JS'
         };
 
         const result = await validationService.validateFile(file);
@@ -213,7 +213,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'script.js',
           content: 'eval("alert(1)");',
-          type: 'js'
+          type: 'JS'
         };
 
         const result = await validationService.validateFile(file);
@@ -227,7 +227,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'config.json',
           content: '{"name": "test", "version": "1.0.0"}',
-          type: 'json'
+          type: 'JSON'
         };
 
         const result = await validationService.validateFile(file);
@@ -240,7 +240,7 @@ describe('CodeValidationService', () => {
         const file: GeneratedFile = {
           filename: 'config.json',
           content: '{"name": "test", "version": }', // Invalid JSON
-          type: 'json'
+          type: 'JSON'
         };
 
         const result = await validationService.validateFile(file);

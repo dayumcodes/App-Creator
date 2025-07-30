@@ -110,7 +110,7 @@ body { margin: 0; }`;
       expect(result.files).toHaveLength(1);
       expect(result.files[0]?.filename).toBe('index.html');
       expect(result.files[0]?.content).toBe(mockGeneratedCode);
-      expect(result.files[0]?.type).toBe('html');
+      expect(result.files[0]?.type).toBe('HTML');
     });
 
     it('should handle validation errors', async () => {
@@ -300,10 +300,10 @@ console.log('test');
         'user-1'
       );
 
-      expect(result.files[0]?.type).toBe('html');
-      expect(result.files[1]?.type).toBe('css');
-      expect(result.files[2]?.type).toBe('js');
-      expect(result.files[3]?.type).toBe('json');
+      expect(result.files[0]?.type).toBe('HTML');
+      expect(result.files[1]?.type).toBe('CSS');
+      expect(result.files[2]?.type).toBe('JS');
+      expect(result.files[3]?.type).toBe('JSON');
     });
   });
 });

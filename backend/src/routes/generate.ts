@@ -1,71 +1,78 @@
 import { Router, Request, Response } from 'express';
 import { CodeGenerationService } from '../services/CodeGenerationService';
-import { authMiddleware } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 import { ProjectRepository } from '../repositories/ProjectRepository';
 import { ProjectFileRepository } from '../repositories/ProjectFileRepository';
 
 const router = Router();
-const codeGenerationService = new CodeGenerationService();
-const projectRepository = new ProjectRepository();
-const projectFileRepository = new ProjectFileRepository();
 
 // Apply authentication middleware to all routes
-router.use(authMiddleware);
+router.use(authenticateToken);
 
 /**
  * Generate code from natural language prompt
  * POST /api/generate
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { prompt, projectId } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
+
+    // Create service instances
+    const codeGenerationService = new CodeGenerationService();
+    const projectRepository = new ProjectRepository();
+    const projectFileRepository = new ProjectFileRepository();
 
     if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({
+      res.status(400).json({
         error: {
           code: 'INVALID_PROMPT',
           message: 'Prompt is required and must be a string'
         }
       });
+      return;
     }
 
     if (!projectId || typeof projectId !== 'string') {
-      return res.status(400).json({
+      res.status(400).json({
         error: {
           code: 'INVALID_PROJECT_ID',
           message: 'Project ID is required and must be a string'
         }
       });
+      return;
     }
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         error: {
           code: 'UNAUTHORIZED',
           message: 'User authentication required'
         }
       });
+      return;
     }
 
     // Verify project ownership
     const project = await projectRepository.findById(projectId);
     if (!project) {
-      return res.status(404).json({
+      res.status(404).json({
         error: {
           code: 'PROJECT_NOT_FOUND',
           message: 'Project not found'
         }
       });
+      return;
     }
 
     if (project.userId !== userId) {
-      return res.status(403).json({
+      res.status(403).json({
         error: {
           code: 'FORBIDDEN',
           message: 'You do not have permission to modify this project'
         }
       });
+      return;
     }
 
     // Generate code
@@ -73,7 +80,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Save generated files to the project
     for (const file of result.files) {
-      await projectFileRepository.upsert({
+      await projectFileRepository.createOrUpdate({
         projectId,
         filename: file.filename,
         content: file.content,
@@ -105,56 +112,66 @@ router.post('/', async (req: Request, res: Response) => {
  * Iterate on existing code with additional prompts
  * POST /api/generate/iterate
  */
-router.post('/iterate', async (req: Request, res: Response) => {
+router.post('/iterate', async (req: Request, res: Response): Promise<void> => {
   try {
     const { prompt, projectId } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
+
+    // Create service instances
+    const codeGenerationService = new CodeGenerationService();
+    const projectRepository = new ProjectRepository();
+    const projectFileRepository = new ProjectFileRepository();
 
     if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({
+      res.status(400).json({
         error: {
           code: 'INVALID_PROMPT',
           message: 'Prompt is required and must be a string'
         }
       });
+      return;
     }
 
     if (!projectId || typeof projectId !== 'string') {
-      return res.status(400).json({
+      res.status(400).json({
         error: {
           code: 'INVALID_PROJECT_ID',
           message: 'Project ID is required and must be a string'
         }
       });
+      return;
     }
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         error: {
           code: 'UNAUTHORIZED',
           message: 'User authentication required'
         }
       });
+      return;
     }
 
     // Verify project ownership
     const project = await projectRepository.findById(projectId);
     if (!project) {
-      return res.status(404).json({
+      res.status(404).json({
         error: {
           code: 'PROJECT_NOT_FOUND',
           message: 'Project not found'
         }
       });
+      return;
     }
 
     if (project.userId !== userId) {
-      return res.status(403).json({
+      res.status(403).json({
         error: {
           code: 'FORBIDDEN',
           message: 'You do not have permission to modify this project'
         }
       });
+      return;
     }
 
     // Iterate on existing code
@@ -162,7 +179,7 @@ router.post('/iterate', async (req: Request, res: Response) => {
 
     // Update modified files in the project
     for (const file of result.modifiedFiles) {
-      await projectFileRepository.upsert({
+      await projectFileRepository.createOrUpdate({
         projectId,
         filename: file.filename,
         content: file.content,
@@ -194,27 +211,29 @@ router.post('/iterate', async (req: Request, res: Response) => {
  * Validate code without generating
  * POST /api/generate/validate
  */
-router.post('/validate', async (req: Request, res: Response) => {
+router.post('/validate', async (req: Request, res: Response): Promise<void> => {
   try {
     const { files } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     if (!files || !Array.isArray(files)) {
-      return res.status(400).json({
+      res.status(400).json({
         error: {
           code: 'INVALID_FILES',
           message: 'Files array is required'
         }
       });
+      return;
     }
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         error: {
           code: 'UNAUTHORIZED',
           message: 'User authentication required'
         }
       });
+      return;
     }
 
     // Validate the provided files

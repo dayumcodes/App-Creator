@@ -1,5 +1,8 @@
 import express, { Request, Response } from 'express';
 import archiver from 'archiver';
+import multer from 'multer';
+import AdmZip from 'adm-zip';
+import path from 'path';
 import { authenticateToken } from '../middleware/auth';
 import { ProjectRepository } from '../repositories/ProjectRepository';
 import { ProjectFileRepository } from '../repositories/ProjectFileRepository';
@@ -15,6 +18,21 @@ import {
 const router = express.Router();
 const projectRepository = new ProjectRepository();
 const projectFileRepository = new ProjectFileRepository();
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only ZIP files are allowed'));
+    }
+  },
+});
 
 // Middleware to validate project ownership
 const validateProjectOwnership = async (
@@ -633,6 +651,164 @@ router.delete('/:projectId/files/:filename', authenticateToken, validateProjectO
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to delete project file'
+      }
+    });
+  }
+});
+
+// POST /api/projects/import - Import project from ZIP
+router.post('/import', authenticateToken, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const { name, description } = req.body;
+
+    if (!req.file) {
+      res.status(400).json({
+        error: {
+          code: 'NO_FILE',
+          message: 'ZIP file is required'
+        }
+      });
+      return;
+    }
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'Project name is required'
+        }
+      });
+      return;
+    }
+
+    try {
+      // Parse ZIP file
+      const zip = new AdmZip(req.file.buffer);
+      const zipEntries = zip.getEntries();
+
+      if (zipEntries.length === 0) {
+        res.status(400).json({
+          error: {
+            code: 'EMPTY_ZIP',
+            message: 'ZIP file is empty'
+          }
+        });
+        return;
+      }
+
+      // Filter and validate files
+      const validFiles: Array<{ filename: string; content: string; type: 'HTML' | 'CSS' | 'JS' | 'JSON' }> = [];
+      const allowedExtensions = ['.html', '.css', '.js', '.json'];
+
+      for (const entry of zipEntries) {
+        if (entry.isDirectory) continue;
+
+        const filename = entry.entryName;
+        const ext = path.extname(filename).toLowerCase();
+
+        if (!allowedExtensions.includes(ext)) continue;
+
+        // Skip system files and hidden files
+        if (filename.startsWith('.') || filename.includes('__MACOSX')) continue;
+
+        const content = entry.getData().toString('utf8');
+        if (content.length === 0) continue;
+
+        let type: 'HTML' | 'CSS' | 'JS' | 'JSON';
+        switch (ext) {
+          case '.html':
+            type = 'HTML';
+            break;
+          case '.css':
+            type = 'CSS';
+            break;
+          case '.js':
+            type = 'JS';
+            break;
+          case '.json':
+            type = 'JSON';
+            break;
+          default:
+            continue;
+        }
+
+        validFiles.push({
+          filename: path.basename(filename),
+          content,
+          type,
+        });
+      }
+
+      if (validFiles.length === 0) {
+        res.status(400).json({
+          error: {
+            code: 'NO_VALID_FILES',
+            message: 'ZIP file contains no valid web files (HTML, CSS, JS, JSON)'
+          }
+        });
+        return;
+      }
+
+      // Create project
+      const projectData: CreateProjectInput = {
+        userId,
+        name: name.trim(),
+        description: description?.trim() || null,
+      };
+
+      const project = await projectRepository.create(projectData);
+
+      // Create files
+      const createdFiles = [];
+      for (const file of validFiles) {
+        const fileData: CreateProjectFileInput = {
+          projectId: project.id,
+          filename: file.filename,
+          content: file.content,
+          type: file.type,
+        };
+
+        const createdFile = await projectFileRepository.create(fileData);
+        createdFiles.push(createdFile);
+      }
+
+      // Return project with files
+      const projectWithFiles = await projectRepository.findWithFiles(project.id);
+
+      res.status(201).json({
+        data: projectWithFiles,
+        message: `Project imported successfully with ${createdFiles.length} files`
+      });
+
+    } catch (zipError) {
+      console.error('Error parsing ZIP file:', zipError);
+      res.status(400).json({
+        error: {
+          code: 'INVALID_ZIP',
+          message: 'Invalid or corrupted ZIP file'
+        }
+      });
+      return;
+    }
+
+  } catch (error) {
+    console.error('Error importing project:', error);
+
+    if (error instanceof DatabaseError) {
+      res.status(400).json({
+        error: {
+          code: error.code || 'DATABASE_ERROR',
+          message: error.message
+        }
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to import project'
       }
     });
   }

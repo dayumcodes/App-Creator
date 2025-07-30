@@ -47,25 +47,25 @@ export class CodeValidationService {
     const warnings: string[] = [];
 
     switch (file.type) {
-      case 'html':
+      case 'HTML':
         const htmlValidation = this.validateHTML(file.content);
         errors.push(...htmlValidation.errors);
         warnings.push(...htmlValidation.warnings);
         break;
       
-      case 'css':
+      case 'CSS':
         const cssValidation = this.validateCSS(file.content);
         errors.push(...cssValidation.errors);
         warnings.push(...cssValidation.warnings);
         break;
       
-      case 'js':
+      case 'JS':
         const jsValidation = this.validateJavaScript(file.content);
         errors.push(...jsValidation.errors);
         warnings.push(...jsValidation.warnings);
         break;
       
-      case 'json':
+      case 'JSON':
         const jsonValidation = this.validateJSON(file.content);
         errors.push(...jsonValidation.errors);
         warnings.push(...jsonValidation.warnings);
@@ -239,7 +239,7 @@ export class CodeValidationService {
     const fileNames = files.map(f => f.filename);
     
     // Check HTML files for references to CSS and JS files
-    const htmlFiles = files.filter(f => f.type === 'html');
+    const htmlFiles = files.filter(f => f.type === 'HTML');
     
     for (const htmlFile of htmlFiles) {
       // Check CSS references

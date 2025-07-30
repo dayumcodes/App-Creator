@@ -6,7 +6,7 @@ import { ProjectFileRepository } from '../repositories/ProjectFileRepository';
 export interface GeneratedFile {
   filename: string;
   content: string;
-  type: 'html' | 'css' | 'js' | 'json';
+  type: 'HTML' | 'CSS' | 'JS' | 'JSON';
 }
 
 export interface CodeGenerationResult {
@@ -106,7 +106,7 @@ export class CodeGenerationService {
         modifiedFiles.push({
           filename: file.filename,
           content: modifiedContent,
-          type: file.type as 'html' | 'css' | 'js' | 'json'
+          type: file.type as 'HTML' | 'CSS' | 'JS' | 'JSON'
         });
       }
       
@@ -179,7 +179,7 @@ Requirements:
       files.push({
         filename: 'index.html',
         content: generatedCode,
-        type: 'html'
+        type: 'HTML'
       });
     }
 
@@ -189,33 +189,26 @@ Requirements:
   /**
    * Determine file type from filename
    */
-  private getFileType(filename: string): 'html' | 'css' | 'js' | 'json' {
+  private getFileType(filename: string): 'HTML' | 'CSS' | 'JS' | 'JSON' {
     const extension = filename.split('.').pop()?.toLowerCase();
     
     switch (extension) {
       case 'html':
       case 'htm':
-        return 'html';
+        return 'HTML';
       case 'css':
-        return 'css';
+        return 'CSS';
       case 'js':
       case 'mjs':
-        return 'js';
+        return 'JS';
       case 'json':
-        return 'json';
+        return 'JSON';
       default:
-        return 'html'; // Default to HTML for unknown extensions
+        return 'HTML'; // Default to HTML for unknown extensions
     }
   }
 
-  /**
-   * Build context string from existing files
-   */
-  private buildContextFromFiles(files: any[]): string {
-    return files.map(file => 
-      `File: ${file.filename}\n${file.content}\n`
-    ).join('\n---\n');
-  }
+
 
   /**
    * Determine which files need modification based on the prompt
@@ -250,9 +243,9 @@ Requirements:
     for (const file of existingFiles) {
       const fileType = this.getFileType(file.filename);
       
-      if ((fileType === 'html' && shouldModifyHTML) ||
-          (fileType === 'css' && shouldModifyCSS) ||
-          (fileType === 'js' && shouldModifyJS)) {
+      if ((fileType === 'HTML' && shouldModifyHTML) ||
+          (fileType === 'CSS' && shouldModifyCSS) ||
+          (fileType === 'JS' && shouldModifyJS)) {
         filesToModify.push(file);
       }
     }

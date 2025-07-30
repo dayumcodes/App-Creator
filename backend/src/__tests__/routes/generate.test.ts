@@ -10,8 +10,8 @@ jest.mock('../../services/CodeGenerationService');
 jest.mock('../../repositories/ProjectRepository');
 jest.mock('../../repositories/ProjectFileRepository');
 jest.mock('../../middleware/auth', () => ({
-  authMiddleware: (req: any, res: any, next: any) => {
-    req.user = { id: 'user-1' };
+  authenticateToken: (req: any, _res: any, next: any) => {
+    req.user = { userId: 'user-1' };
     next();
   }
 }));
@@ -58,7 +58,7 @@ describe('Generate Routes', () => {
           {
             filename: 'index.html',
             content: '<html><body>Hello World</body></html>',
-            type: 'html' as const
+            type: 'HTML' as const
           }
         ],
         isValid: true,
@@ -67,12 +67,12 @@ describe('Generate Routes', () => {
 
       mockProjectRepository.findById.mockResolvedValue(mockProject);
       mockCodeGenerationService.generateApplication.mockResolvedValue(mockGenerationResult);
-      mockProjectFileRepository.upsert.mockResolvedValue({
+      mockProjectFileRepository.createOrUpdate.mockResolvedValue({
         id: '1',
         projectId: 'project-1',
         filename: 'index.html',
         content: '<html><body>Hello World</body></html>',
-        type: 'html',
+        type: 'HTML',
         createdAt: new Date(),
         updatedAt: new Date()
       });
@@ -94,11 +94,11 @@ describe('Generate Routes', () => {
         'project-1',
         'user-1'
       );
-      expect(mockProjectFileRepository.upsert).toHaveBeenCalledWith({
+      expect(mockProjectFileRepository.createOrUpdate).toHaveBeenCalledWith({
         projectId: 'project-1',
         filename: 'index.html',
         content: '<html><body>Hello World</body></html>',
-        type: 'html'
+        type: 'HTML'
       });
     });
 
@@ -203,7 +203,7 @@ describe('Generate Routes', () => {
           {
             filename: 'index.html',
             content: '<html><body><h1>Modified</h1></body></html>',
-            type: 'html' as const
+            type: 'HTML' as const
           }
         ],
         isValid: true,
@@ -212,12 +212,12 @@ describe('Generate Routes', () => {
 
       mockProjectRepository.findById.mockResolvedValue(mockProject);
       mockCodeGenerationService.iterateOnCode.mockResolvedValue(mockIterationResult);
-      mockProjectFileRepository.upsert.mockResolvedValue({
+      mockProjectFileRepository.createOrUpdate.mockResolvedValue({
         id: '1',
         projectId: 'project-1',
         filename: 'index.html',
         content: '<html><body><h1>Modified</h1></body></html>',
-        type: 'html',
+        type: 'HTML',
         createdAt: new Date(),
         updatedAt: new Date()
       });
