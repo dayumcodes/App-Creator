@@ -1,7 +1,27 @@
-import { User, Project, ProjectFile, PromptHistory, FileType } from '../generated/prisma';
+import { 
+  User, 
+  Project, 
+  ProjectFile, 
+  PromptHistory, 
+  ProjectVersion,
+  FileSnapshot,
+  FileChange,
+  FileType,
+  ChangeType 
+} from '../generated/prisma';
 
 // Re-export Prisma types
-export { User, Project, ProjectFile, PromptHistory, FileType };
+export { 
+  User, 
+  Project, 
+  ProjectFile, 
+  PromptHistory, 
+  ProjectVersion,
+  FileSnapshot,
+  FileChange,
+  FileType,
+  ChangeType 
+};
 
 // Extended types for API responses
 export interface UserWithProjects extends User {
@@ -61,6 +81,42 @@ export interface CreatePromptHistoryInput {
   prompt: string;
   response: string;
   filesChanged: string[];
+}
+
+export interface CreateProjectVersionInput {
+  projectId: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateProjectVersionInput {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface CreateFileSnapshotInput {
+  versionId: string;
+  filename: string;
+  content: string;
+  type: FileType;
+}
+
+export interface CreateFileChangeInput {
+  projectId: string;
+  filename: string;
+  oldContent?: string;
+  newContent: string;
+  changeType: ChangeType;
+}
+
+export interface ProjectVersionWithSnapshots extends ProjectVersion {
+  snapshots: FileSnapshot[];
+}
+
+export interface FileChangeWithDiff extends FileChange {
+  diff?: string;
 }
 
 // Query options

@@ -6,6 +6,7 @@ import { databaseService } from './services/DatabaseService';
 import authRoutes from './routes/auth';
 import projectRoutes from './routes/projects';
 import generateRoutes from './routes/generate';
+import previewRoutes from './routes/preview';
 
 // Load environment variables
 dotenv.config();
@@ -51,6 +52,9 @@ app.use('/api/projects', projectRoutes);
 
 // Code generation routes
 app.use('/api/generate', generateRoutes);
+
+// Preview routes
+app.use('/api/preview', previewRoutes);
 
 // Database connection and server startup
 async function startServer() {

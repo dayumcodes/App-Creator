@@ -2,10 +2,36 @@ import React from 'react';
 import { useAppSelector } from '../hooks/redux';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PromptInput from '../components/PromptInput';
+import MonacoEditor from '../components/MonacoEditor';
+import FileTree from '../components/FileTree';
+import LivePreview from '../components/LivePreview';
+import '../components/Editor.css';
 
 const Editor: React.FC = () => {
   const { currentProject, activeFile, isLoading } = useAppSelector((state) => state.project);
   const { isGenerating } = useAppSelector((state) => state.ui);
+
+  const handleCreateFile = (filename: string, type: string) => {
+    // This would typically make an API call to create the file
+    console.log('Creating file:', filename, type);
+  };
+
+  const handleDeleteFile = (filename: string) => {
+    // This would typically make an API call to delete the file
+    console.log('Deleting file:', filename);
+  };
+
+  const handleRenameFile = (oldFilename: string, newFilename: string) => {
+    // This would typically make an API call to rename the file
+    console.log('Renaming file:', oldFilename, 'to', newFilename);
+  };
+
+  const getCurrentFile = () => {
+    if (!currentProject || !activeFile) return null;
+    return currentProject.files.find(file => file.filename === activeFile);
+  };
+
+  const currentFile = getCurrentFile();
 
   if (isLoading) {
     return <LoadingSpinner message="Loading project..." />;
@@ -29,43 +55,53 @@ const Editor: React.FC = () => {
       <div className="editor-layout">
         <div className="editor-left">
           <PromptInput />
+          <div className="editor-file-tree">
+            <FileTree
+              onCreateFile={handleCreateFile}
+              onDeleteFile={handleDeleteFile}
+              onRenameFile={handleRenameFile}
+            />
+          </div>
+        </div>
+
+        <div className="editor-center">
+          <div className="editor-toolbar">
+            <div className="editor-toolbar-left">
+              <span className="current-file-name">
+                {currentFile ? currentFile.filename : 'No file selected'}
+              </span>
+            </div>
+            <div className="editor-toolbar-right">
+              <button className="btn btn-small" title="Format Document">
+                Format
+              </button>
+              <button className="btn btn-small" title="Save File">
+                Save
+              </button>
+            </div>
+          </div>
           
-          <div className="code-editor-section">
-            <div className="editor-tabs">
-              {currentProject.files.map((file) => (
-                <button
-                  key={file.id}
-                  className={`editor-tab ${activeFile === file.filename ? 'active' : ''}`}
-                >
-                  {file.filename}
-                </button>
-              ))}
-            </div>
-            <div className="code-editor">
+          <div className="code-editor-container">
+            {currentFile ? (
+              <MonacoEditor
+                filename={currentFile.filename}
+                content={currentFile.content}
+                language={currentFile.type.toLowerCase()}
+              />
+            ) : (
               <div className="editor-placeholder">
-                <p>Code editor will be implemented in a future task</p>
-                <p>Current file: {activeFile || 'None selected'}</p>
+                <div className="empty-state">
+                  <div className="empty-icon">📝</div>
+                  <h3>No file selected</h3>
+                  <p>Select a file from the file tree or create a new one to start editing</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
         <div className="editor-right">
-          <div className="preview-section">
-            <div className="preview-header">
-              <h3>Live Preview</h3>
-              <div className="preview-controls">
-                <button className="btn btn-small">Refresh</button>
-                <button className="btn btn-small">Open in New Tab</button>
-              </div>
-            </div>
-            <div className="preview-container">
-              <div className="preview-placeholder">
-                <p>Live preview will be implemented in a future task</p>
-                <p>Project: {currentProject.name}</p>
-              </div>
-            </div>
-          </div>
+          <LivePreview />
         </div>
       </div>
     </div>

@@ -112,6 +112,31 @@ const projectSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    addFile: (state, action: PayloadAction<ProjectFile>) => {
+      if (state.currentProject) {
+        state.currentProject.files.push(action.payload);
+        state.activeFile = action.payload.filename;
+      }
+    },
+    deleteFile: (state, action: PayloadAction<string>) => {
+      if (state.currentProject) {
+        state.currentProject.files = state.currentProject.files.filter(f => f.filename !== action.payload);
+        if (state.activeFile === action.payload) {
+          state.activeFile = state.currentProject.files[0]?.filename || null;
+        }
+      }
+    },
+    renameFile: (state, action: PayloadAction<{ oldFilename: string; newFilename: string }>) => {
+      if (state.currentProject) {
+        const file = state.currentProject.files.find(f => f.filename === action.payload.oldFilename);
+        if (file) {
+          file.filename = action.payload.newFilename;
+          if (state.activeFile === action.payload.oldFilename) {
+            state.activeFile = action.payload.newFilename;
+          }
+        }
+      }
+    },
   },
 });
 
@@ -128,6 +153,9 @@ export const {
   setPagination,
   setError,
   clearError,
+  addFile,
+  deleteFile,
+  renameFile,
 } = projectSlice.actions;
 
 export default projectSlice.reducer;

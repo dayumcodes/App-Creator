@@ -281,6 +281,27 @@ class ApiService {
     return this.request(`/projects/${projectId}/prompts`);
   }
 
+  // Preview endpoints
+  async generateShareableUrl(projectId: string): Promise<ApiResponse<{
+    shareUrl: string;
+    expiresAt: string;
+  }>> {
+    return this.request('/preview/generate-share-url', {
+      method: 'POST',
+      body: JSON.stringify({ projectId }),
+    });
+  }
+
+  async getPreviewInfo(previewId: string): Promise<ApiResponse<{
+    previewId: string;
+    projectId: string;
+    createdAt: string;
+    expiresAt: string;
+    isExpired: boolean;
+  }>> {
+    return this.request(`/preview/info/${previewId}`);
+  }
+
   // Streaming code generation
   async generateCodeStream(
     projectId: string, 
