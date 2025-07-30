@@ -222,6 +222,135 @@ class ApiService {
       };
     }
   }
+
+  // Code generation endpoints
+  async generateCode(projectId: string, prompt: string): Promise<ApiResponse<{
+    files: ProjectFile[];
+    promptHistory: {
+      id: string;
+      prompt: string;
+      response: string;
+      filesChanged: string[];
+      createdAt: string;
+    };
+  }>> {
+    return this.request(`/generate`, {
+      method: 'POST',
+      body: JSON.stringify({ projectId, prompt }),
+    });
+  }
+
+  async iterateCode(projectId: string, prompt: string): Promise<ApiResponse<{
+    files: ProjectFile[];
+    promptHistory: {
+      id: string;
+      prompt: string;
+      response: string;
+      filesChanged: string[];
+      createdAt: string;
+    };
+  }>> {
+    return this.request(`/iterate`, {
+      method: 'POST',
+      body: JSON.stringify({ projectId, prompt }),
+    });
+  }
+
+  async validateCode(code: string, language: string): Promise<ApiResponse<{
+    isValid: boolean;
+    errors: Array<{
+      line: number;
+      column: number;
+      message: string;
+      severity: 'error' | 'warning';
+    }>;
+  }>> {
+    return this.request(`/validate`, {
+      method: 'POST',
+      body: JSON.stringify({ code, language }),
+    });
+  }
+
+  async getPromptHistory(projectId: string): Promise<ApiResponse<Array<{
+    id: string;
+    prompt: string;
+    response: string;
+    filesChanged: string[];
+    createdAt: string;
+  }>>> {
+    return this.request(`/projects/${projectId}/prompts`);
+  }
+
+  // Streaming code generation
+  async generateCodeStream(
+    projectId: string, 
+    prompt: string,
+    onChunk: (chunk: string) => void,
+    onComplete: (result: any) => void,
+    onError: (error: string) => void
+  ): Promise<void> {
+    const token = localStorage.getItem('token');
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/generate/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ projectId, prompt }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        onError(errorData.error?.message || 'Generation failed');
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        onError('Failed to read response stream');
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              return;
+            }
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.type === 'chunk') {
+                onChunk(parsed.content);
+              } else if (parsed.type === 'complete') {
+                onComplete(parsed.result);
+              } else if (parsed.type === 'error') {
+                onError(parsed.message);
+              }
+            } catch (e) {
+              // Ignore malformed JSON
+            }
+          }
+        }
+      }
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Network error occurred');
+    }
+  }
 }
 
 export const apiService = new ApiService();

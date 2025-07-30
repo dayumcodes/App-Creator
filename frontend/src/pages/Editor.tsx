@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppSelector } from '../hooks/redux';
 import LoadingSpinner from '../components/LoadingSpinner';
+import PromptInput from '../components/PromptInput';
 
 const Editor: React.FC = () => {
   const { currentProject, activeFile, isLoading } = useAppSelector((state) => state.project);
@@ -27,21 +28,7 @@ const Editor: React.FC = () => {
     <div className="editor">
       <div className="editor-layout">
         <div className="editor-left">
-          <div className="prompt-section">
-            <h3>AI Assistant</h3>
-            <div className="prompt-input">
-              <textarea
-                placeholder="Describe what you want to build or modify..."
-                disabled={isGenerating}
-              />
-              <button 
-                className="btn btn-primary"
-                disabled={isGenerating}
-              >
-                {isGenerating ? 'Generating...' : 'Generate'}
-              </button>
-            </div>
-          </div>
+          <PromptInput />
           
           <div className="code-editor-section">
             <div className="editor-tabs">
