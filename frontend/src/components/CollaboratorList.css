@@ -1,0 +1,256 @@
+.collaborator-list {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e1e5e9;
+  overflow: hidden;
+}
+
+.collaborator-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e1e5e9;
+  background: #f8f9fa;
+}
+
+.collaborator-list-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.invite-button {
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.invite-button:hover {
+  background: #3182ce;
+}
+
+.invite-form {
+  padding: 16px;
+  border-bottom: 1px solid #e1e5e9;
+  background: #f7fafc;
+}
+
+.form-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.form-group input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.form-group select {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.form-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.form-actions button[type="submit"] {
+  background: #48bb78;
+  color: white;
+}
+
+.form-actions button[type="submit"]:hover:not(:disabled) {
+  background: #38a169;
+}
+
+.form-actions button[type="submit"]:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.form-actions button[type="button"] {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.form-actions button[type="button"]:hover {
+  background: #cbd5e0;
+}
+
+.collaborator-items {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.collaborator-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.collaborator-item:last-child {
+  border-bottom: none;
+}
+
+.collaborator-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.collaborator-avatar {
+  position: relative;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #4299e1;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.presence-indicator {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 12px;
+  background: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collaborator-details {
+  flex: 1;
+}
+
+.collaborator-name {
+  font-weight: 500;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.online-badge {
+  background: #48bb78;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.collaborator-email {
+  font-size: 12px;
+  color: #718096;
+}
+
+.collaborator-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-select {
+  padding: 4px 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+}
+
+.role-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.role-badge.role-owner {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.role-badge.role-editor {
+  background: #bee3f8;
+  color: #2b6cb0;
+}
+
+.role-badge.role-viewer {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.remove-button {
+  background: #fed7d7;
+  color: #c53030;
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.remove-button:hover {
+  background: #feb2b2;
+}
+
+.empty-state {
+  padding: 32px 16px;
+  text-align: center;
+  color: #718096;
+}
+
+.empty-state p {
+  margin: 0 0 8px 0;
+}
+
+.empty-state p:last-child {
+  margin-bottom: 0;
+  font-size: 14px;
+}

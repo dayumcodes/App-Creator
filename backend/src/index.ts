@@ -2,19 +2,30 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 import { databaseService } from './services/DatabaseService';
+import { SocketService } from './services/SocketService';
+import { PrismaClient } from './generated/prisma';
 import authRoutes from './routes/auth';
 import projectRoutes from './routes/projects';
 import generateRoutes from './routes/generate';
 import previewRoutes from './routes/preview';
 import versionRoutes from './routes/versions';
 import deploymentRoutes from './routes/deployments';
+import collaborationRoutes from './routes/collaboration';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+const server = createServer(app);
 const PORT = process.env['PORT'] || 3001;
+
+// Initialize Prisma client
+const prisma = new PrismaClient();
+
+// Initialize Socket.IO service
+const socketService = new SocketService(server, prisma);
 
 // Middleware
 app.use(helmet());
@@ -64,6 +75,9 @@ app.use('/api', versionRoutes);
 // Deployment routes
 app.use('/api/deployments', deploymentRoutes);
 
+// Collaboration routes
+app.use('/api/collaboration', collaborationRoutes);
+
 // Database connection and server startup
 async function startServer() {
   try {
@@ -71,10 +85,11 @@ async function startServer() {
     await databaseService.connect();
     console.log('✅ Database connected successfully');
 
-    // Start server
-    app.listen(PORT, () => {
+    // Start server with Socket.IO support
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`🔌 WebSocket server ready for real-time collaboration`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
@@ -87,6 +102,7 @@ process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down gracefully...');
   try {
     await databaseService.disconnect();
+    await prisma.$disconnect();
     console.log('✅ Database disconnected');
     process.exit(0);
   } catch (error) {
@@ -99,6 +115,7 @@ process.on('SIGTERM', async () => {
   console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
   try {
     await databaseService.disconnect();
+    await prisma.$disconnect();
     console.log('✅ Database disconnected');
     process.exit(0);
   } catch (error) {

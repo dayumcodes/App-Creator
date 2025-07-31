@@ -1,0 +1,82 @@
+.collaborator-cursors {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.collaborator-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 11;
+}
+
+.cursor-line {
+  width: 2px;
+  height: 18px;
+  position: relative;
+  animation: cursor-blink 1s infinite;
+}
+
+.cursor-label {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.collaborator-cursor:hover .cursor-label {
+  opacity: 1;
+}
+
+.cursor-selection {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1px solid;
+  border-radius: 2px;
+  opacity: 0.3;
+}
+
+@keyframes cursor-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.3;
+  }
+}
+
+/* Show labels on hover or when cursor is active */
+.collaborator-cursor.active .cursor-label,
+.collaborator-cursor:hover .cursor-label {
+  opacity: 1;
+}
+
+/* Fade in animation for new cursors */
+.collaborator-cursor {
+  animation: cursor-fade-in 0.3s ease-out;
+}
+
+@keyframes cursor-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
