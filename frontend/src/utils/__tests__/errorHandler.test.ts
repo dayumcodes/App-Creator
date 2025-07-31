@@ -35,9 +35,9 @@ describe('FrontendErrorHandler', () => {
       ok: true,
       json: async () => ({ success: true }),
     });
-    
+
     mockSessionStorage.getItem.mockReturnValue('[]');
-    
+
     // Create new instance for each test
     errorHandler = FrontendErrorHandler.getInstance();
     errorHandler.clearErrorQueue();
@@ -93,9 +93,9 @@ describe('FrontendErrorHandler', () => {
         remove: vi.fn(),
         parentElement: document.body,
       };
-      
+
       const createElement = vi.spyOn(document, 'createElement').mockReturnValue(mockElement as any);
-      const appendChild = vi.spyOn(document.body, 'appendChild').mockImplementation();
+      const appendChild = vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockElement as any);
 
       const error = new Error('Critical error');
       errorHandler.handleError(error, undefined, 'critical');
@@ -179,14 +179,14 @@ describe('FrontendErrorHandler', () => {
         action: `action_${i}`,
         timestamp: new Date().toISOString(),
       }));
-      
+
       mockSessionStorage.getItem.mockReturnValue(JSON.stringify(existingActions));
 
       errorHandler.reportUserAction('new_action');
 
       const setItemCall = mockSessionStorage.setItem.mock.calls[0];
       const storedActions = JSON.parse(setItemCall[1]);
-      
+
       expect(storedActions).toHaveLength(10);
       expect(storedActions[9].action).toBe('new_action');
       expect(storedActions[0].action).toBe('action_1'); // First action removed
@@ -316,7 +316,10 @@ describe('Utility Functions', () => {
         password: 'Password too short'
       };
 
-      const context = { form: 'registration' };
+      const context = {
+        action: 'form_validation',
+        metadata: { form: 'registration' }
+      };
       handleValidationError(errors, context);
 
       // Should not throw and should handle the error
@@ -327,7 +330,10 @@ describe('Utility Functions', () => {
   describe('handleAsyncError', () => {
     it('should handle successful async operation', async () => {
       const asyncFn = vi.fn().mockResolvedValue('success');
-      const context = { operation: 'test' };
+      const context = {
+        action: 'async_operation',
+        metadata: { operation: 'test' }
+      };
 
       const result = await handleAsyncError(asyncFn, context);
 
@@ -337,7 +343,10 @@ describe('Utility Functions', () => {
 
     it('should handle failed async operation', async () => {
       const asyncFn = vi.fn().mockRejectedValue(new Error('Async error'));
-      const context = { operation: 'test' };
+      const context = {
+        action: 'async_operation',
+        metadata: { operation: 'test' }
+      };
 
       const result = await handleAsyncError(asyncFn, context);
 
