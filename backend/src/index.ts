@@ -7,6 +7,7 @@ import authRoutes from './routes/auth';
 import projectRoutes from './routes/projects';
 import generateRoutes from './routes/generate';
 import previewRoutes from './routes/preview';
+import versionRoutes from './routes/versions';
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,9 @@ app.use('/api/generate', generateRoutes);
 
 // Preview routes
 app.use('/api/preview', previewRoutes);
+
+// Version control routes
+app.use('/api', versionRoutes);
 
 // Database connection and server startup
 async function startServer() {

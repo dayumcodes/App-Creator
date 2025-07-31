@@ -161,8 +161,7 @@
   - Write tests for preview functionality and security
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 12. Implement version control and history
-
+- [x] 12. Implement version control and history
 
 
 

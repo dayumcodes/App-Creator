@@ -152,7 +152,7 @@ export class ProjectVersionRepository {
         data: {
           projectId,
           name,
-          description,
+          description: description || null,
           isActive: true,
         },
       });
