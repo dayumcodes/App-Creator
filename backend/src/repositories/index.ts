@@ -5,6 +5,7 @@ import { PromptHistoryRepository } from './PromptHistoryRepository';
 import { ProjectVersionRepository } from './ProjectVersionRepository';
 import { FileSnapshotRepository } from './FileSnapshotRepository';
 import { FileChangeRepository } from './FileChangeRepository';
+import { DeploymentRepository } from './DeploymentRepository';
 
 export { 
   UserRepository, 
@@ -13,7 +14,8 @@ export {
   PromptHistoryRepository,
   ProjectVersionRepository,
   FileSnapshotRepository,
-  FileChangeRepository
+  FileChangeRepository,
+  DeploymentRepository
 };
 
 // Create singleton instances

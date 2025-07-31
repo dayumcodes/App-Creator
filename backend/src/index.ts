@@ -8,6 +8,7 @@ import projectRoutes from './routes/projects';
 import generateRoutes from './routes/generate';
 import previewRoutes from './routes/preview';
 import versionRoutes from './routes/versions';
+import deploymentRoutes from './routes/deployments';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,9 @@ app.use('/api/preview', previewRoutes);
 
 // Version control routes
 app.use('/api', versionRoutes);
+
+// Deployment routes
+app.use('/api/deployments', deploymentRoutes);
 
 // Database connection and server startup
 async function startServer() {

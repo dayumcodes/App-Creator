@@ -10,6 +10,37 @@ import {
   ChangeType 
 } from '../generated/prisma';
 
+// Deployment types (will be generated after migration)
+export enum DeploymentPlatform {
+  NETLIFY = 'NETLIFY',
+  VERCEL = 'VERCEL',
+  GITHUB_PAGES = 'GITHUB_PAGES',
+}
+
+export enum DeploymentStatus {
+  PENDING = 'PENDING',
+  BUILDING = 'BUILDING',
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+}
+
+export interface Deployment {
+  id: string;
+  projectId: string;
+  platform: DeploymentPlatform;
+  status: DeploymentStatus;
+  url?: string;
+  customDomain?: string;
+  buildCommand?: string;
+  outputDir?: string;
+  envVars?: Record<string, string>;
+  errorMessage?: string;
+  deploymentId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Re-export Prisma types
 export { 
   User, 
@@ -109,6 +140,26 @@ export interface CreateFileChangeInput {
   oldContent?: string;
   newContent: string;
   changeType: ChangeType;
+}
+
+export interface CreateDeploymentInput {
+  projectId: string;
+  platform: DeploymentPlatform;
+  customDomain?: string | undefined;
+  buildCommand?: string | undefined;
+  outputDir?: string | undefined;
+  envVars?: Record<string, string> | undefined;
+}
+
+export interface UpdateDeploymentInput {
+  status?: DeploymentStatus | undefined;
+  url?: string | undefined;
+  customDomain?: string | undefined;
+  buildCommand?: string | undefined;
+  outputDir?: string | undefined;
+  envVars?: Record<string, string> | undefined;
+  errorMessage?: string | undefined;
+  deploymentId?: string | undefined;
 }
 
 export interface ProjectVersionWithSnapshots extends ProjectVersion {

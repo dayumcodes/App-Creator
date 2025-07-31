@@ -42,6 +42,7 @@ model Project {
   prompts      PromptHistory[]
   versions     ProjectVersion[]
   changes      FileChange[]
+  deployments  Deployment[]
   
   @@map("projects")
 }
@@ -131,8 +132,43 @@ enum FileType {
   JSX
 }
 
+model Deployment {
+  id            String           @id @default(cuid())
+  projectId     String
+  platform      DeploymentPlatform
+  status        DeploymentStatus @default(PENDING)
+  url           String?
+  customDomain  String?
+  buildCommand  String?
+  outputDir     String?
+  envVars       Json?
+  errorMessage  String?
+  deploymentId  String?          // Platform-specific deployment ID
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  
+  // Relations
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@map("deployments")
+}
+
 enum ChangeType {
   CREATE
   UPDATE
   DELETE
+}
+
+enum DeploymentPlatform {
+  NETLIFY
+  VERCEL
+  GITHUB_PAGES
+}
+
+enum DeploymentStatus {
+  PENDING
+  BUILDING
+  SUCCESS
+  FAILED
+  CANCELLED
 }
