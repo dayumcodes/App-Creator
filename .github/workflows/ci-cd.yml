@@ -1,0 +1,429 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+  POSTGRES_VERSION: '14'
+
+jobs:
+  # Lint and Format Check
+  lint-and-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Lint backend
+        run: cd backend && npm run lint
+
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+
+      - name: Check backend formatting
+        run: cd backend && npm run format -- --check
+
+      - name: Check frontend formatting
+        run: cd frontend && npm run format -- --check
+
+  # Backend Tests
+  backend-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lovable_clone_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      - name: Setup test environment
+        run: |
+          cd backend
+          cp .env.example .env
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/lovable_clone_test" >> .env
+          echo "REDIS_URL=redis://localhost:6379" >> .env
+          echo "JWT_SECRET=test-secret-key" >> .env
+          echo "NODE_ENV=test" >> .env
+
+      - name: Run database migrations
+        run: cd backend && npm run db:migrate
+
+      - name: Run unit tests
+        run: cd backend && npm test -- --coverage --testPathPattern="__tests__/(services|utils|repositories)" --verbose
+
+      - name: Run integration tests
+        run: cd backend && npm test -- --testPathPattern="__tests__/integration" --verbose
+
+      - name: Run middleware tests
+        run: cd backend && npm test -- --testPathPattern="__tests__/middleware" --verbose
+
+      - name: Upload backend coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage/lcov.info
+          flags: backend
+          name: backend-coverage
+
+  # Frontend Tests
+  frontend-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Run unit tests
+        run: cd frontend && npm test
+
+      - name: Run visual regression tests
+        run: cd frontend && npm test -- --testPathPattern="visual" --verbose
+
+      - name: Upload frontend coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+  # End-to-End Tests
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lovable_clone_e2e
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Setup backend environment
+        run: |
+          cd backend
+          cp .env.example .env
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/lovable_clone_e2e" >> .env
+          echo "REDIS_URL=redis://localhost:6379" >> .env
+          echo "JWT_SECRET=e2e-test-secret" >> .env
+          echo "NODE_ENV=test" >> .env
+          echo "PORT=3001" >> .env
+
+      - name: Setup database
+        run: |
+          cd backend
+          npm run db:migrate
+          npm run db:seed
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+      - name: Start backend server
+        run: |
+          cd backend
+          npm run build
+          npm start &
+          sleep 10
+        env:
+          NODE_ENV: test
+
+      - name: Run E2E tests
+        run: cd backend && npm test -- --testPathPattern="e2e" --verbose --detectOpenHandles --forceExit
+
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results
+          path: backend/test-results/
+
+  # Load Testing
+  load-tests:
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lovable_clone_load
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      - name: Setup load test environment
+        run: |
+          cd backend
+          cp .env.example .env
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/lovable_clone_load" >> .env
+          echo "REDIS_URL=redis://localhost:6379" >> .env
+          echo "JWT_SECRET=load-test-secret" >> .env
+          echo "NODE_ENV=test" >> .env
+
+      - name: Setup database
+        run: |
+          cd backend
+          npm run db:migrate
+
+      - name: Run load tests
+        run: cd backend && npm test -- --testPathPattern="load" --verbose --detectOpenHandles --forceExit --maxWorkers=1
+
+      - name: Upload load test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: load-test-results
+          path: backend/load-test-results/
+
+  # Security Tests
+  security-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Run security audit (backend)
+        run: cd backend && npm audit --audit-level=high
+
+      - name: Run security audit (frontend)
+        run: cd frontend && npm audit --audit-level=high
+
+      - name: Run security tests
+        run: cd backend && npm test -- --testPathPattern="security" --verbose
+
+  # Build and Deploy (only on main branch)
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, backend-tests, frontend-tests, e2e-tests, security-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Build backend
+        run: cd backend && npm run build
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+      - name: Run post-build tests
+        run: |
+          cd backend && npm test -- --testPathPattern="build" --verbose
+          cd ../frontend && npm test -- --testPathPattern="build" --verbose
+
+      - name: Create deployment artifacts
+        run: |
+          mkdir -p deployment
+          cp -r backend/dist deployment/backend
+          cp -r frontend/dist deployment/frontend
+          cp backend/package.json deployment/
+          cp backend/package-lock.json deployment/
+          cp -r backend/prisma deployment/
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-artifacts
+          path: deployment/
+
+      # Add your deployment steps here
+      # Example for Docker deployment:
+      # - name: Build Docker images
+      #   run: |
+      #     docker build -t lovable-clone-backend ./backend
+      #     docker build -t lovable-clone-frontend ./frontend
+
+      # - name: Deploy to staging
+      #   run: |
+      #     # Add your deployment commands here
+      #     echo "Deploying to staging environment"
+
+  # Performance Monitoring
+  performance-monitoring:
+    runs-on: ubuntu-latest
+    needs: [build-and-deploy]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: cd backend && npm ci
+
+      - name: Run performance benchmarks
+        run: cd backend && npm run benchmark
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: backend/performance-results/
+
+  # Notification
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build-and-deploy, performance-monitoring]
+    if: always()
+    
+    steps:
+      - name: Notify on success
+        if: needs.build-and-deploy.result == 'success'
+        run: |
+          echo "✅ CI/CD Pipeline completed successfully!"
+          echo "Deployment artifacts are ready for production deployment."
+
+      - name: Notify on failure
+        if: needs.build-and-deploy.result == 'failure' || needs.performance-monitoring.result == 'failure'
+        run: |
+          echo "❌ CI/CD Pipeline failed!"
+          echo "Please check the logs and fix the issues before deploying."
+          exit 1

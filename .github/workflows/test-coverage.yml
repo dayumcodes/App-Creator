@@ -1,0 +1,157 @@
+name: Test Coverage Report
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lovable_clone_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Setup backend test environment
+        run: |
+          cd backend
+          cp .env.example .env
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/lovable_clone_test" >> .env
+          echo "REDIS_URL=redis://localhost:6379" >> .env
+          echo "JWT_SECRET=test-secret-key" >> .env
+          echo "NODE_ENV=test" >> .env
+
+      - name: Run database migrations
+        run: cd backend && npm run db:migrate
+
+      - name: Generate backend coverage
+        run: |
+          cd backend
+          npm test -- --coverage --coverageDirectory=coverage --coverageReporters=lcov,json,html
+        env:
+          CI: true
+
+      - name: Generate frontend coverage
+        run: |
+          cd frontend
+          npm test -- --coverage --coverageDirectory=coverage --coverageReporters=lcov,json,html
+        env:
+          CI: true
+
+      - name: Combine coverage reports
+        run: |
+          mkdir -p combined-coverage
+          cp backend/coverage/lcov.info combined-coverage/backend-lcov.info
+          cp frontend/coverage/lcov.info combined-coverage/frontend-lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./combined-coverage
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Generate coverage badge
+        uses: tj-actions/coverage-badge-py@v2
+        with:
+          output: coverage-badge.svg
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: |
+            backend/coverage/
+            frontend/coverage/
+            combined-coverage/
+            coverage-badge.svg
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read backend coverage summary
+            const backendCoverage = JSON.parse(fs.readFileSync('backend/coverage/coverage-summary.json', 'utf8'));
+            const frontendCoverage = JSON.parse(fs.readFileSync('frontend/coverage/coverage-summary.json', 'utf8'));
+            
+            const backendTotal = backendCoverage.total;
+            const frontendTotal = frontendCoverage.total;
+            
+            const comment = `## 📊 Test Coverage Report
+            
+            ### Backend Coverage
+            | Metric | Percentage | Covered/Total |
+            |--------|------------|---------------|
+            | Lines | ${backendTotal.lines.pct}% | ${backendTotal.lines.covered}/${backendTotal.lines.total} |
+            | Functions | ${backendTotal.functions.pct}% | ${backendTotal.functions.covered}/${backendTotal.functions.total} |
+            | Branches | ${backendTotal.branches.pct}% | ${backendTotal.branches.covered}/${backendTotal.branches.total} |
+            | Statements | ${backendTotal.statements.pct}% | ${backendTotal.statements.covered}/${backendTotal.statements.total} |
+            
+            ### Frontend Coverage
+            | Metric | Percentage | Covered/Total |
+            |--------|------------|---------------|
+            | Lines | ${frontendTotal.lines.pct}% | ${frontendTotal.lines.covered}/${frontendTotal.lines.total} |
+            | Functions | ${frontendTotal.functions.pct}% | ${frontendTotal.functions.covered}/${frontendTotal.functions.total} |
+            | Branches | ${frontendTotal.branches.pct}% | ${frontendTotal.branches.covered}/${frontendTotal.branches.total} |
+            | Statements | ${frontendTotal.statements.pct}% | ${frontendTotal.statements.covered}/${frontendTotal.statements.total} |
+            
+            ### Coverage Thresholds
+            - ✅ Lines: ${backendTotal.lines.pct >= 80 && frontendTotal.lines.pct >= 80 ? 'PASS' : 'FAIL'} (Target: 80%)
+            - ✅ Functions: ${backendTotal.functions.pct >= 80 && frontendTotal.functions.pct >= 80 ? 'PASS' : 'FAIL'} (Target: 80%)
+            - ✅ Branches: ${backendTotal.branches.pct >= 70 && frontendTotal.branches.pct >= 70 ? 'PASS' : 'FAIL'} (Target: 70%)
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Check coverage thresholds
+        run: |
+          cd backend
+          npm test -- --coverage --coverageThreshold='{"global":{"lines":80,"functions":80,"branches":70,"statements":80}}'
+          cd ../frontend
+          npm test -- --coverage --coverageThreshold='{"global":{"lines":80,"functions":80,"branches":70,"statements":80}}'
