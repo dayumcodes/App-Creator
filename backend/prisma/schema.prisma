@@ -30,6 +30,8 @@ model User {
   events             CollaborationEvent[]
   chatMessages       ProjectChatMessage[]
   
+  @@index([createdAt])
+  @@index([updatedAt])
   @@map("users")
 }
 
@@ -53,6 +55,11 @@ model Project {
   events          CollaborationEvent[]
   chatMessages    ProjectChatMessage[]
   
+  @@index([userId])
+  @@index([userId, updatedAt])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([name])
   @@map("projects")
 }
 
@@ -69,6 +76,9 @@ model ProjectFile {
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   
   @@unique([projectId, filename])
+  @@index([projectId])
+  @@index([projectId, type])
+  @@index([updatedAt])
   @@map("project_files")
 }
 
@@ -83,6 +93,8 @@ model PromptHistory {
   // Relations
   project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   
+  @@index([projectId])
+  @@index([projectId, createdAt])
   @@map("prompt_history")
 }
 

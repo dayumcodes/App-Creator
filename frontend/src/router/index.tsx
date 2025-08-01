@@ -1,13 +1,23 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { initializeAuth } from '../store/slices/authSlice';
 import Layout from '../components/Layout';
-import Dashboard from '../pages/Dashboard';
-import Editor from '../pages/Editor';
-import Login from '../pages/Login';
-import Register from '../pages/Register';
-import Profile from '../pages/Profile';
+
+// Lazy load components for code splitting
+const Dashboard = React.lazy(() => import('../pages/Dashboard'));
+const Editor = React.lazy(() => import('../pages/Editor'));
+const Login = React.lazy(() => import('../pages/Login'));
+const Register = React.lazy(() => import('../pages/Register'));
+const Profile = React.lazy(() => import('../pages/Profile'));
+
+// Loading component for lazy loading
+const LazyLoadingSpinner: React.FC = () => (
+  <div className="loading-spinner loading-spinner--large">
+    <div className="spinner"></div>
+    <p className="loading-message">Loading...</p>
+  </div>
+);
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -22,19 +32,18 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   // Show loading while initializing
   if (!isInitialized || isLoading) {
-    return (
-      <div className="loading-spinner loading-spinner--large">
-        <div className="spinner"></div>
-        <p className="loading-message">Loading...</p>
-      </div>
-    );
+    return <LazyLoadingSpinner />;
   }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   
-  return <>{children}</>;
+  return (
+    <Suspense fallback={<LazyLoadingSpinner />}>
+      {children}
+    </Suspense>
+  );
 };
 
 // Public Route component (redirect to dashboard if authenticated)
@@ -50,19 +59,18 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // Show loading while initializing
   if (!isInitialized || isLoading) {
-    return (
-      <div className="loading-spinner loading-spinner--large">
-        <div className="spinner"></div>
-        <p className="loading-message">Loading...</p>
-      </div>
-    );
+    return <LazyLoadingSpinner />;
   }
   
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
   
-  return <>{children}</>;
+  return (
+    <Suspense fallback={<LazyLoadingSpinner />}>
+      {children}
+    </Suspense>
+  );
 };
 
 export const router = createBrowserRouter([

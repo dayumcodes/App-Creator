@@ -8,6 +8,7 @@ import {
   DuplicateError,
 } from '../types/database';
 import { Prisma } from '../generated/prisma';
+import { cacheService } from '../services/CacheService';
 
 export class UserRepository {
   async create(data: CreateUserInput): Promise<User> {
@@ -27,9 +28,22 @@ export class UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    return await prisma.user.findUnique({
+    // Try cache first
+    const cached = await cacheService.get<User>(`user:${id}`);
+    if (cached) {
+      return cached;
+    }
+
+    const user = await prisma.user.findUnique({
       where: { id },
     });
+
+    // Cache the result if found
+    if (user) {
+      await cacheService.set(`user:${id}`, user, 600); // 10 minutes
+    }
+
+    return user;
   }
 
   async findByIdOrThrow(id: string): Promise<User> {
@@ -41,9 +55,23 @@ export class UserRepository {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return await prisma.user.findUnique({
+    // Try cache first
+    const cached = await cacheService.get<User>(`user:email:${email}`);
+    if (cached) {
+      return cached;
+    }
+
+    const user = await prisma.user.findUnique({
       where: { email },
     });
+
+    // Cache the result if found
+    if (user) {
+      await cacheService.set(`user:email:${email}`, user, 300); // 5 minutes
+      await cacheService.set(`user:${user.id}`, user, 600); // Also cache by ID
+    }
+
+    return user;
   }
 
   async findByUsername(username: string): Promise<User | null> {
@@ -65,10 +93,19 @@ export class UserRepository {
 
   async update(id: string, data: UpdateUserInput): Promise<User> {
     try {
-      return await prisma.user.update({
+      const user = await prisma.user.update({
         where: { id },
         data,
       });
+
+      // Invalidate cache after update
+      await cacheService.del(`user:${id}`);
+      if (user.email) {
+        await cacheService.del(`user:email:${user.email}`);
+      }
+      await cacheService.invalidateUserCache(id);
+
+      return user;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {

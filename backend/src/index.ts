@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { databaseService } from './services/DatabaseService';
@@ -13,9 +14,11 @@ import previewRoutes from './routes/preview';
 import versionRoutes from './routes/versions';
 import deploymentRoutes from './routes/deployments';
 import collaborationRoutes from './routes/collaboration';
+import performanceRoutes from './routes/performance';
 
 // Import error handling and monitoring
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { staticAssets, assetVersioning, optimizedImages } from './middleware/staticAssets';
 import { errorReporter } from './utils/errorReporting';
 import { performanceMonitor, performanceMiddleware } from './utils/performanceMonitor';
 import { debugMode } from './utils/debugMode';
@@ -40,11 +43,35 @@ const socketService = new SocketService(server, prisma);
 // Middleware
 app.use(helmet());
 app.use(cors());
+
+// Enable compression for all responses
+app.use(compression({
+  level: 6, // Compression level (1-9, 6 is default)
+  threshold: 1024, // Only compress responses larger than 1KB
+  filter: (req, res) => {
+    // Don't compress if the request includes a cache-control header to not transform
+    if (req.headers['cache-control'] && req.headers['cache-control'].includes('no-transform')) {
+      return false;
+    }
+    // Use compression filter function
+    return compression.filter(req, res);
+  }
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Performance monitoring middleware
 app.use(performanceMiddleware);
+
+// Static asset optimization middleware
+app.use(assetVersioning());
+app.use(optimizedImages());
+app.use(staticAssets({
+  maxAge: process.env.NODE_ENV === 'production' ? 86400 : 0, // 24 hours in production
+  immutable: false,
+  compress: true
+}));
 
 // Health check endpoint with database status and performance metrics
 app.get('/health', async (_req, res) => {
@@ -100,6 +127,9 @@ app.use('/api/deployments', deploymentRoutes);
 
 // Collaboration routes
 app.use('/api/collaboration', collaborationRoutes);
+
+// Performance monitoring routes
+app.use('/api/performance', performanceRoutes);
 
 // Debug endpoints (only in development)
 if (process.env.NODE_ENV === 'development') {

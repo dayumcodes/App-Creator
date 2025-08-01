@@ -9,6 +9,7 @@ import {
   NotFoundError,
 } from '../types/database';
 import { Prisma } from '../generated/prisma';
+import { cacheService } from '../services/CacheService';
 
 export class ProjectRepository {
   async create(data: CreateProjectInput): Promise<Project> {
@@ -18,9 +19,22 @@ export class ProjectRepository {
   }
 
   async findById(id: string): Promise<Project | null> {
-    return await prisma.project.findUnique({
+    // Try cache first
+    const cached = await cacheService.getProjectFromCache(id);
+    if (cached) {
+      return cached;
+    }
+
+    const project = await prisma.project.findUnique({
       where: { id },
     });
+
+    // Cache the result if found
+    if (project) {
+      await cacheService.cacheProject(id, project);
+    }
+
+    return project;
   }
 
   async findByIdOrThrow(id: string): Promise<Project> {
@@ -32,7 +46,19 @@ export class ProjectRepository {
   }
 
   async findWithFiles(id: string): Promise<ProjectWithFiles | null> {
-    return await prisma.project.findUnique({
+    // Try cache first
+    const cachedFiles = await cacheService.getProjectFilesFromCache(id);
+    const cachedProject = await cacheService.getProjectFromCache(id);
+    
+    if (cachedProject && cachedFiles) {
+      return {
+        ...cachedProject,
+        files: cachedFiles,
+        user: cachedProject.user
+      } as ProjectWithFiles;
+    }
+
+    const project = await prisma.project.findUnique({
       where: { id },
       include: {
         files: {
@@ -41,6 +67,14 @@ export class ProjectRepository {
         user: true,
       },
     });
+
+    // Cache the results if found
+    if (project) {
+      await cacheService.cacheProject(id, project);
+      await cacheService.cacheProjectFiles(id, project.files);
+    }
+
+    return project;
   }
 
   async findWithAll(id: string): Promise<ProjectWithAll | null> {
@@ -65,6 +99,20 @@ export class ProjectRepository {
     limit: number;
   }> {
     const { userId, search, page = 1, limit = 10 } = options;
+    
+    // Only cache simple queries without search
+    if (!search && page === 1 && limit === 10) {
+      const cached = await cacheService.getUserProjectsFromCache(userId);
+      if (cached) {
+        return {
+          projects: cached,
+          total: cached.length,
+          page,
+          limit,
+        };
+      }
+    }
+
     const skip = (page - 1) * limit;
 
     const where: Prisma.ProjectWhereInput = {
@@ -87,6 +135,11 @@ export class ProjectRepository {
       prisma.project.count({ where }),
     ]);
 
+    // Cache simple queries
+    if (!search && page === 1 && limit === 10) {
+      await cacheService.cacheUserProjects(userId, projects);
+    }
+
     return {
       projects,
       total,
@@ -97,10 +150,18 @@ export class ProjectRepository {
 
   async update(id: string, data: UpdateProjectInput): Promise<Project> {
     try {
-      return await prisma.project.update({
+      const project = await prisma.project.update({
         where: { id },
         data,
       });
+
+      // Invalidate cache after update
+      await cacheService.invalidateProjectCache(id);
+      if (project.userId) {
+        await cacheService.invalidateUserCache(project.userId);
+      }
+
+      return project;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
@@ -113,9 +174,17 @@ export class ProjectRepository {
 
   async delete(id: string): Promise<Project> {
     try {
-      return await prisma.project.delete({
+      const project = await prisma.project.delete({
         where: { id },
       });
+
+      // Invalidate cache after deletion
+      await cacheService.invalidateProjectCache(id);
+      if (project.userId) {
+        await cacheService.invalidateUserCache(project.userId);
+      }
+
+      return project;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
