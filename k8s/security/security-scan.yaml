@@ -1,0 +1,100 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: security-scan
+  namespace: lovable-clone
+spec:
+  schedule: "0 2 * * *"  # Run daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: trivy-scanner
+            image: aquasec/trivy:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting security scan..."
+              
+              # Scan container images
+              trivy image --format json --output /tmp/backend-scan.json lovable-clone/backend:latest
+              trivy image --format json --output /tmp/frontend-scan.json lovable-clone/frontend:latest
+              trivy image --format json --output /tmp/postgres-scan.json postgres:15
+              trivy image --format json --output /tmp/redis-scan.json redis:7-alpine
+              
+              # Scan Kubernetes configurations
+              trivy config --format json --output /tmp/k8s-scan.json /k8s-configs/
+              
+              # Generate summary report
+              echo "Security Scan Report - $(date)" > /tmp/security-report.txt
+              echo "================================" >> /tmp/security-report.txt
+              
+              # Count vulnerabilities
+              BACKEND_HIGH=$(cat /tmp/backend-scan.json | jq '.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH") | .VulnerabilityID' | wc -l)
+              BACKEND_CRITICAL=$(cat /tmp/backend-scan.json | jq '.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL") | .VulnerabilityID' | wc -l)
+              
+              echo "Backend Image:" >> /tmp/security-report.txt
+              echo "  Critical: $BACKEND_CRITICAL" >> /tmp/security-report.txt
+              echo "  High: $BACKEND_HIGH" >> /tmp/security-report.txt
+              
+              FRONTEND_HIGH=$(cat /tmp/frontend-scan.json | jq '.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH") | .VulnerabilityID' | wc -l)
+              FRONTEND_CRITICAL=$(cat /tmp/frontend-scan.json | jq '.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL") | .VulnerabilityID' | wc -l)
+              
+              echo "Frontend Image:" >> /tmp/security-report.txt
+              echo "  Critical: $FRONTEND_CRITICAL" >> /tmp/security-report.txt
+              echo "  High: $FRONTEND_HIGH" >> /tmp/security-report.txt
+              
+              # Send alert if critical vulnerabilities found
+              TOTAL_CRITICAL=$((BACKEND_CRITICAL + FRONTEND_CRITICAL))
+              if [ $TOTAL_CRITICAL -gt 0 ]; then
+                echo "🚨 CRITICAL VULNERABILITIES FOUND: $TOTAL_CRITICAL" >> /tmp/security-report.txt
+                # Send notification (implement your notification method)
+                if [ ! -z "$SLACK_WEBHOOK_URL" ]; then
+                  curl -X POST -H 'Content-type: application/json' \
+                    --data '{"text":"🚨 Security Alert: '${TOTAL_CRITICAL}' critical vulnerabilities found in Lovable Clone"}' \
+                    $SLACK_WEBHOOK_URL
+                fi
+              fi
+              
+              cat /tmp/security-report.txt
+              
+              # Upload reports to storage (if configured)
+              if [ ! -z "$AWS_S3_BUCKET" ]; then
+                aws s3 cp /tmp/ s3://$AWS_S3_BUCKET/security-reports/$(date +%Y/%m/%d)/ --recursive
+              fi
+            volumeMounts:
+            - name: k8s-configs
+              mountPath: /k8s-configs
+              readOnly: true
+            env:
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: lovable-secrets
+                  key: SLACK_WEBHOOK_URL
+                  optional: true
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: lovable-config
+                  key: AWS_S3_BUCKET
+                  optional: true
+          volumes:
+          - name: k8s-configs
+            configMap:
+              name: k8s-configs
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8s-configs
+  namespace: lovable-clone
+data:
+  # Include your Kubernetes configuration files here for scanning
+  backend-deployment.yaml: |
+    # Content would be populated from your actual deployment files
+  frontend-deployment.yaml: |
+    # Content would be populated from your actual deployment files

@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: lovable-clone-staging
+
+resources:
+- ../../namespace.yaml
+- ../../configmap.yaml
+- ../../postgres-deployment.yaml
+- ../../redis-deployment.yaml
+- ../../backend-deployment.yaml
+- ../../frontend-deployment.yaml
+
+patchesStrategicMerge:
+- namespace-patch.yaml
+- configmap-patch.yaml
+- backend-patch.yaml
+
+images:
+- name: lovable-clone/backend
+  newTag: staging
+- name: lovable-clone/frontend
+  newTag: staging

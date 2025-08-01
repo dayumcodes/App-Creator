@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lovable-config
+  namespace: lovable-clone
+data:
+  NODE_ENV: "production"
+  DATABASE_URL: "postgresql://postgres:password@postgres-service:5432/lovable_clone"
+  REDIS_URL: "redis://redis-service:6379"
+  PORT: "3000"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lovable-secrets
+  namespace: lovable-clone
+type: Opaque
+data:
+  # Base64 encoded secrets - replace with actual values
+  JWT_SECRET: eW91ci1qd3Qtc2VjcmV0LWhlcmU=  # your-jwt-secret-here
+  OPENAI_API_KEY: eW91ci1vcGVuYWktYXBpLWtleS1oZXJl  # your-openai-api-key-here
+  POSTGRES_PASSWORD: cGFzc3dvcmQ=  # password

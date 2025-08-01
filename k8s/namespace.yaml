@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lovable-clone
+  labels:
+    name: lovable-clone
+    environment: production
